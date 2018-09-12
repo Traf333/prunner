@@ -1,4 +1,5 @@
 require 'httparty'
+require_relative './result'
 
 # the class +Client+ is responsible for fetching data tree from the remote server
 # It has considered case for unstable servers by retrying the request.
@@ -11,11 +12,10 @@ class Client
 
   base_uri 'https://kf6xwyykee.execute-api.us-east-1.amazonaws.com/production'
 
-  attr_reader :options, :error
+  attr_reader :options
 
   def initialize(options = {})
     @options = options
-    @error = nil
   end
 
   def tree
@@ -24,16 +24,15 @@ class Client
   rescue Client::ExternalError => e
     tries += 1
     retry if tries < allowed_retry_count
-    @error = e.message
-    nil
+    Result.error(:external_error, e.message)
   end
 
   private
 
   def fetch_tree
-    self.class.get('/tree/input').tap do |response|
-      raise ExternalError.new(response.body) unless response.success?
-    end
+    response = self.class.get('/tree/input')
+    raise ExternalError.new(response.body) unless response.success?
+    Result.new(response)
   end
 
   def allowed_retry_count

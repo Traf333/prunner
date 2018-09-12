@@ -10,7 +10,7 @@ RSpec.describe Prunner do
     let(:sub_theme) { build_sub_theme('categories' => [category, build_category]) }
     let(:theme) { build_theme('sub_themes' => [sub_theme]) }
     let(:tree) { [theme, build_theme] }
-    let(:client) { double('client', tree: tree) }
+    let(:client) { double('client', tree: Result.new(tree)) }
     let(:indicator_ids) { [indicator['id']] }
 
     before do
@@ -18,14 +18,17 @@ RSpec.describe Prunner do
     end
 
     it 'returns origin tree without passed ids' do
-      expect(subject.call).to eq tree
+      result = subject.call
+      expect(result).to be_success
+      expect(result.value).to eq tree
     end
 
     it 'returns prunned tree result' do
       result = subject.call(indicator_ids)
-      expect(result).to eq [theme]
+      expect(result).to be_success
+      expect(result.value).to eq [theme]
 
-      sub_themes = result.first['sub_themes']
+      sub_themes = result.value.first['sub_themes']
       expect(sub_themes).to eq [sub_theme]
 
       categories = sub_themes.first['categories']
@@ -36,10 +39,10 @@ RSpec.describe Prunner do
     end
 
     context 'client has external error' do
-      let(:client) { double('client', tree: nil, error: 'Some error') }
+      let(:client) { double('client', tree: Result.error(:external_error)) }
 
       it 'returns result with error message' do
-        expect(subject.call).to eq client.error
+        expect(subject.call).not_to be_success
       end
     end
   end

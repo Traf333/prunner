@@ -9,17 +9,19 @@ RSpec.describe Client do
       allow(described_class).to receive(:get) { stub_response }
     end
 
-    it { expect(subject.tree).to eq stub_response }
+    it { expect(subject.tree.value).to eq stub_response }
 
     context 'failed request' do
       let(:retry_count) { 2 }
       let(:error_message) { 'Something went wrong' }
       let(:stub_response) { double(success?: false, body: error_message) }
-      let(:successful_response) { double(success?: true) }
+      let(:successful_response) { Result.new(double(success?: true)) }
 
-      it 'sets an error message' do
-        expect(subject.tree).to be_nil
-        expect(subject.error).to eq error_message
+      it 'return error result' do
+        result = subject.tree
+        expect(result).to be_a Result
+        expect(result).not_to be_success
+        expect(result.error.data).to eq error_message
       end
 
       it 'returns response if one of requests was successful' do
@@ -28,7 +30,9 @@ RSpec.describe Client do
           call_count += 1
           call_count.odd? ? raise(Client::ExternalError) : successful_response
         end
-        expect(subject.tree).to eq successful_response
+        result = subject.tree
+        expect(result).to be_success
+        expect(result).to eq successful_response
       end
     end
   end
